@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>UK House Price Trends by Region</title>
+    <style>
+        body {
+            background-color: #ADD8E6;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .centered-heading {
+            text-align: center;
+            color: #333;
+            width: 100%;
+        }
+
+        .dropdown-container {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .colorful-dropdown {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+        }
+
+        .line {
+            fill: none;
+            stroke-width: 3px; /* Increase line thickness */
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .summary-card {
+            background-color: #f2f2f2;
+            padding: 10px;
+            margin: 40px 0 0 40px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 200px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div>
+        <h1 class="centered-heading">UK House Price Trends by Region</h1>
+        <div class="dropdown-container">
+            <label for="region-select">Select Region:</label>
+            <select id="region-select" class="colorful-dropdown"></select>
+        </div>
+        <div id="chart-container">
+            <div id="chart"></div>
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+    </div>
+    <div id="summary-cards"></div>
+</div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+    // Load data
+    const url = "https://raw.githubusercontent.com/Cherie-Stephen/data-visualisation/main/UK_House_Price.csv";
+    d3.csv(url).then(function(data) {
+        // Data preprocessing
+        const regions = [...new Set(data.map(d => d.RegionName))];
+        const parseDate = d3.timeParse("%d/%m/%Y");
+        data.forEach(d => {
+            d.Date = parseDate(d.Date);
+            d.AveragePrice = +d.AveragePrice;
+            d.SalesVolume = +d.SalesVolume;
+            d.DetachedPrice = +d.DetachedPrice;
+            d.SemiDetachedPrice = +d.SemiDetachedPrice;
+            d.TerracedPrice = +d.TerracedPrice;
+            d.FlatPrice = +d.FlatPrice;
+            d.MortgagePrice = +d.MortgagePrice;
+        });
+
+        // Populate region dropdown
+        const regionSelect = d3.select("#region-select")
+            .selectAll("option")
+            .data(regions)
+            .enter()
+            .append("option")
+            .text(d => d);
+
+        // Create initial chart
+        createRegionChart(data, regions[0]);
+
+        // Update chart on region selection
+        d3.select("#region-select").on("change", function() {
+            const selectedRegion = this.value;
+            createRegionChart(data, selectedRegion);
+        });
+    });
+
+    // Chart creation function
+    function createRegionChart(data, selectedRegion) {
+        const width = 800;
+        const height = 500;
+        const margin = { top: 20, right: 20, bottom: 50, left: 70 }; // Increased bottom margin to accommodate x-axis label
+
+        // Remove existing chart
+        d3.select("#chart").selectAll("*").remove();
+
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+        const x = d3.scaleTime()
+            .range([0, width]);
+
+        const y = d3.scaleLinear()
+            .range([height, 0]);
+
+        const line = d3.line()
+            .x(d => x(d.Date))
+            .y(d => y(d.AveragePrice));
+
+        const regionData = data.filter(d => d.RegionName === selectedRegion);
+        const startDate = new Date("2010-01-01");
+        const endDate = new Date("2023-01-01");
+
+        // Filter data by start date
+        const filteredRegionData = regionData.filter(d => d.Date >= startDate);
+
+        x.domain([startDate, endDate]);
+        y.domain([0, d3.max(filteredRegionData, d => d.AveragePrice)]);
+
+        // Define color scale
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+        // Add x-axis with year format
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", `translate(0, ${height})`)
+            .call(d3.axisBottom(x).ticks(d3.timeYear).tickFormat(d3.timeFormat("%Y")));
+
+        // Add x-axis label
+        svg.append("text")
+            .attr("class", "x-axis-label")
+            .attr("text-anchor", "middle")
+            .attr("x", width / 2)
+            .attr("y", height + margin.bottom - 10)
+            .text("Year");
+
+        // Add y-axis with caption
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(d3.axisLeft(y));
+
+        // Add y-axis label
+        svg.append("text")
+            .attr("class", "y-axis-label")
+            .attr("text-anchor", "middle")
+            .attr("transform", "rotate(-90)")
+            .attr("x", -height / 2)
+            .attr("y", -margin.left + 20)
+            .text("Average Price (£)");
+
+        // Add multicolored line
+        svg.append("path")
+            .datum(filteredRegionData)
+            .attr("class", "line")
+            .attr("d", line)
+            .style("stroke", (_, i) => color(i));
+
+        // Add tooltip interaction
+        const tooltip = d3.select("#tooltip");
+
+        svg.selectAll(".line")
+            .on("mouseover", function(event, d) {
+                const mouseX = d3.pointer(event)[0];
+                const bisectDate = d3.bisector(d => d.Date).left;
+                const date = x.invert(mouseX);
+                const bisectIndex = bisectDate(filteredRegionData, date, 1);
+                const d0 = filteredRegionData[bisectIndex - 1];
+                const d1 = filteredRegionData[bisectIndex];
+                const hoveredData = date - d0.Date > d1.Date - date ? d1 : d0;
+
+                const formattedDate = d3.timeFormat("%d/%m/%Y")(hoveredData.Date);
+                const price = hoveredData.AveragePrice;
+
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", 1);
+
+                tooltip.html(`Date: ${formattedDate}<br>Average Price: &pound;${price.toLocaleString()}`)
+                    .style("left", `${event.pageX + 10}px`)
+                    .style("top", `${event.pageY - 28}px`);
+            })
+            .on("mouseout", function() {
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            });
+
+        // Update summary cards
+        updateSummary(data, selectedRegion);
+    }
+
+    // Function to update summary cards
+    function updateSummary(data, selectedRegion) {
+        const summaryData = data.filter(d => d.RegionName === selectedRegion);
+
+        const averagePrice = d3.mean(summaryData, d => d.AveragePrice).toFixed(2);
+        const averageSalesVolume = d3.mean(summaryData, d => d.SalesVolume).toFixed(2);
+        const averageDetachedPrice = d3.mean(summaryData, d => d.DetachedPrice).toFixed(2);
+        const averageSemiDetachedPrice = d3.mean(summaryData, d => d.SemiDetachedPrice).toFixed(2);
+        const averageTerracedPrice = d3.mean(summaryData, d => d.TerracedPrice).toFixed(2);
+        const averageFlatPrice = d3.mean(summaryData, d => d.FlatPrice).toFixed(2);
+        const averageMortgagePrice = d3.mean(summaryData, d => d.MortgagePrice).toFixed(2);
+
+        const summaryCardsData = [
+            { label: "Average Price", value: averagePrice },
+            { label: "Average Sales Volume", value: averageSalesVolume },
+            { label: "Average Detached Price", value: averageDetachedPrice },
+            { label: "Average Semi-Detached Price", value: averageSemiDetachedPrice },
+            { label: "Average Terraced Price", value: averageTerracedPrice },
+            { label: "Average Flat Price", value: averageFlatPrice },
+            { label: "Average Mortgage Price", value: averageMortgagePrice }
+        ];
+
+        const summaryCards = d3.select("#summary-cards")
+            .selectAll(".summary-card")
+            .data(summaryCardsData);
+
+        summaryCards.enter()
+            .append("div")
+            .attr("class", "summary-card")
+            .merge(summaryCards)
+            .html(d => `<strong>${d.label}:</strong> £${d.value}`);
+
+        summaryCards.exit().remove();
+    }
+</script>
+</body>
+</html>
