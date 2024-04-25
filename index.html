@@ -35,14 +35,14 @@
             padding: 8px 12px;
             border: none;
             border-radius: 4px;
-            background-color: #4CAF50;
+            background-color: darkslateblue;
             color: white;
-            font-size: 16px;
+            font-size: 18px;
         }
 
         .line {
             fill: none;
-            stroke-width: 3px; /* Increase line thickness */
+            stroke-width: 5px; /* Increase line thickness */
         }
 
         .axis path,
@@ -64,14 +64,45 @@
         }
 
         .summary-card {
-            background-color: #f2f2f2;
-            padding: 10px;
+            padding: 15px;
             margin: 40px 0 0 40px;
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 200px;
+            width: 150px;
             text-align: center;
         }
+
+        .summary-card.sales-volume {
+            border: 2px solid #333;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .detached { background-color: hotpink; }
+        .semi-detached { background-color: mediumseagreen; }
+        .terraced { background-color: orangered; }
+        .flat { background-color: yellow; }
+        .mortgage { background-color: mediumpurple; }
+
+
+
     </style>
 </head>
 <body>
@@ -86,8 +117,20 @@
             <div id="chart"></div>
             <div id="tooltip" class="tooltip"></div>
         </div>
+
     </div>
     <div id="summary-cards"></div>
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color detached"></div> <span>Detached</span></div>
+        <div class="legend-item"><div class="legend-color semi-detached"></div> <span>Semi-Detached</span></div>
+        <div class="legend-item"><div class="legend-color terraced"></div> <span>Terraced</span></div>
+        <div class="legend-item"><div class="legend-color flat"></div> <span>Flat</span></div>
+        <div class="legend-item"><div class="legend-color mortgage"></div> <span>Mortgage</span></div>
+    </div>
+    <div id="notes">
+        <h2>Data processing and Visualisation</h2>
+        <p>The data was processed and read through D3 code from the github source: https://raw.githubusercontent.com/Cherie-Stephen/data-visualisation/main/UK_House_Price.csv. The Average Price was aggregated for each region and time period. It was also aggregated over each property type. Overall, the analysis shows house prices tend to increase over time for most regions. Link to the github project: https://github.com/Cherie-Stephen/data-visualisation</p>
+    </div>
 </div>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
@@ -247,14 +290,12 @@
         const averageMortgagePrice = d3.mean(summaryData, d => d.MortgagePrice).toFixed(2);
 
         const summaryCardsData = [
-            { label: "Average Price", value: averagePrice },
-            { label: "Average Sales Volume", value: averageSalesVolume },
-            { label: "Average Detached Price", value: averageDetachedPrice },
-            { label: "Average Semi-Detached Price", value: averageSemiDetachedPrice },
-            { label: "Average Terraced Price", value: averageTerracedPrice },
-            { label: "Average Flat Price", value: averageFlatPrice },
-            { label: "Average Mortgage Price", value: averageMortgagePrice }
-        ];
+            { label: "Average Sales Volume", value: averageSalesVolume, category: "sales-volume" },
+            { label: "Average Price", value: averageDetachedPrice, category: "detached" },
+            { label: "Average Price", value: averageSemiDetachedPrice, category: "semi-detached" },
+            { label: "Average Price", value: averageTerracedPrice, category: "terraced" },
+            { label: "Average Price", value: averageFlatPrice, category: "flat" },
+            { label: "Average Price", value: averageMortgagePrice, category: "mortgage" }];
 
         const summaryCards = d3.select("#summary-cards")
             .selectAll(".summary-card")
@@ -262,12 +303,13 @@
 
         summaryCards.enter()
             .append("div")
-            .attr("class", "summary-card")
+            .attr("class", d => `summary-card ${d.category}`)
             .merge(summaryCards)
             .html(d => `<strong>${d.label}:</strong> £${d.value}`);
 
         summaryCards.exit().remove();
     }
+
 </script>
 </body>
 </html>
